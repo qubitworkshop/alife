@@ -1,0 +1,113 @@
+﻿<div id="canvas"></div>
+
+@section Styles
+{
+    <link href="~/lib/jquery.svg-1.5.0/jquery.svg.css" rel="stylesheet" />
+    
+    <style>
+        rect.reset {
+            fill: transparent
+        }
+
+        rect.highlight {
+            fill: #bc5048;
+            fill-opacity: 0.2;
+            stroke: red;
+            stroke-width: 1;
+            stroke-opacity: 0.7;
+        }
+
+         rect.nav:hover {
+             cursor: pointer;
+             fill: #ee711e;
+             fill-opacity: 0.2;
+             stroke: #f47e30;
+             stroke-width: 1;
+             stroke-opacity: 0.8;
+         }
+    </style>
+}
+
+@section Scripts
+{
+    <script src="~/lib/jquery.svg-1.5.0/jquery.svg.js"></script>
+    <script src="~/lib/jquery.svg-1.5.0/jquery.svgdom.js"></script>
+
+    <script>
+        function getParmsFromURLHash(param) {
+            var re = new RegExp("#.*[?&]" + param + "=([^&]+)(&|$)");
+            var match = location.hash.match(re);
+            return (match ? match[1] : "");
+        }
+
+        var highlightVariable = function (svg) {
+            if (getParmsFromURLHash('nav') === 'true') {
+                //handle document navigation
+                $('rect', svg.root()).on('click',
+                    function () {
+                        var id = $(this).attr('id');
+                        alert("WOOHOO! - you clicked on " + id);
+                    });
+
+                $('rect', svg.root())
+                    .addClass('nav');
+            } else {
+                $("rect", svg.root()).off();
+
+                $('rect', svg.root())
+                    .removeClass('nav');
+            }
+
+            $('rect', svg.root())
+                .removeClass('highlight')
+                .addClass('reset');
+
+            $('#' + getParmsFromURLHash('var'), svg.root())
+                .addClass('highlight')
+                .removeClass('reset');
+
+            $('html, body').animate({
+                scrollTop: $('#' + getParmsFromURLHash('var'), svg.root()).offset().top - 50
+            }, 500);
+        }
+
+        function onLoad(svg, error) {
+            highlightVariable(svg);
+        }
+
+        //#?year=2013&var=tfn&nav=false
+        $(document).ready(function() {
+            var manifest;
+            var year = getParmsFromURLHash('year');
+
+            $.get("/api/forms/manifest",
+                function(result, status) {
+                    manifest = result;
+
+                    $(manifest.availableForms).each(function(index) {
+                        if (this.year == year) {
+                            $(this.availablePages).each(function(index) {
+                                var svgSrc = '/api/forms/' + year + '/' + this;
+
+                                $('#canvas').svg({
+                                    loadURL: svgSrc,
+                                    onLoad: onLoad,
+                                    settings: {
+                                        addTo: true
+                                    },
+                                    initPath: ''
+                                });
+                            });
+
+                            return false;
+                        }
+                    });
+                });
+
+            $(window).on('hashchange', function () {
+                var svg = $('#canvas').svg('get');
+                highlightVariable(svg);
+            });
+        });
+    </script>
+}
